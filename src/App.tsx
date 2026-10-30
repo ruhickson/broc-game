@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { questions, type Answer } from "./questions.ts";
+import { drawRound, type Answer } from "./questions.ts";
 
 const SHARE_URL = "https://quiz.broc.fi";
 const APP_URL = "https://app.broc.fi";
@@ -31,6 +31,7 @@ function reducedMotion() {
 }
 
 export default function App() {
+  const [round] = useState(() => drawRound());
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -62,7 +63,7 @@ export default function App() {
   function answer(next: Answer) {
     if (lock.current || finishedRef.current) return;
     lock.current = true;
-    const card = questions[indexRef.current];
+    const card = round[indexRef.current];
     if (card.answer === next) {
       scoreRef.current += 1;
       setScore(scoreRef.current);
@@ -83,7 +84,7 @@ export default function App() {
     }, hold);
     later(() => {
       const upcoming = indexRef.current + 1;
-      if (upcoming >= questions.length) {
+      if (upcoming >= round.length) {
         finishedRef.current = true;
         setFinished(true);
       } else {
@@ -197,7 +198,7 @@ export default function App() {
   }
 
   async function share() {
-    const text = `I scored ${scoreRef.current} out of 10 on Broc's Irish money quiz.`;
+    const text = `I scored ${scoreRef.current} out of ${round.length} on Broc's Irish money quiz.`;
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({ title: "Broc quiz", text, url: SHARE_URL });
@@ -214,7 +215,8 @@ export default function App() {
     }
   }
 
-  const card = questions[index];
+  const card = round[index];
+  const total = round.length;
   const yesWash = Math.max(0, Math.min(1, pose.x / 120));
   const noWash = Math.max(0, Math.min(1, -pose.x / 120));
   const pointer = {
@@ -225,12 +227,12 @@ export default function App() {
   };
 
   const status = finished
-    ? `Score ${score} out of 10.`
+    ? `Score ${score} out of ${total}.`
     : choice && phase !== "idle"
       ? card.answer === choice
         ? "Correct."
         : "Not quite."
-      : `Card ${index + 1} of 10.`;
+      : `Card ${index + 1} of ${total}.`;
 
   return (
     <div className="desk">
@@ -240,23 +242,23 @@ export default function App() {
             <span className="dot" aria-hidden="true" />
             Broc
           </p>
-          <p className="count">{finished ? "Score" : `${index + 1} of 10`}</p>
+          <p className="count">{finished ? "Score" : `${index + 1} of ${total}`}</p>
         </header>
         <div className="pips" aria-hidden="true">
-          {questions.map((item, pip) => (
+          {round.map((item, pip) => (
             <span key={item.id} className={pip < index || finished ? "on" : pip === index ? "now" : ""} />
           ))}
         </div>
         <div className="stage">
-          {!finished && index < questions.length - 1 && <div className="under under-1" aria-hidden="true" />}
-          {!finished && index < questions.length - 2 && <div className="under under-2" aria-hidden="true" />}
+          {!finished && index < total - 1 && <div className="under under-1" aria-hidden="true" />}
+          {!finished && index < total - 2 && <div className="under under-2" aria-hidden="true" />}
           {finished ? (
             <article key="score" className="card deal score-card" style={cardStyle(pose)} data-screen="score" {...pointer}>
               <div className="wash yes" style={{ opacity: yesWash }} />
               <div className="score-mid">
                 <p className="kicker">Your score</p>
                 <p className="num">{score}</p>
-                <p className="of">out of 10</p>
+                <p className="of">out of {total}</p>
                 <button
                   type="button"
                   className="share"
